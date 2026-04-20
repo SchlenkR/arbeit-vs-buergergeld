@@ -344,6 +344,16 @@ export function renderLegalNotice(container: HTMLElement): void {
         ${RECHTSGRUNDLAGEN.map(renderGroup).join("")}
       </div>
     </section>
+
+    <section class="legal-footer">
+      <div class="legal-footer-copy">&copy; 2026 Ronald Schlenger</div>
+      <a
+        class="legal-footer-link"
+        href="https://github.com/SchlenkR/arbeit-vs-buergergeld"
+        target="_blank"
+        rel="noopener noreferrer"
+      >Quellcode auf GitHub</a>
+    </section>
   `;
 }
 

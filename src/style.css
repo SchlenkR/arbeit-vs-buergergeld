@@ -1452,6 +1452,31 @@ aside::before {
   color: var(--muted);
 }
 
+.legal-footer {
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.legal-footer-link {
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--muted) 50%, transparent);
+  text-underline-offset: 0.15em;
+}
+
+.legal-footer-link:hover {
+  color: var(--fg);
+  text-decoration-color: var(--fg);
+}
+
 .source-groups {
   display: grid;
   gap: 0.9rem;
