@@ -54,7 +54,3 @@ src/
 ## Mitwirken
 
 Hinweise auf Rechenfehler, blinde Flecken oder methodische Schwächen sind willkommen — bitte per Issue oder PR.
-
-## Lizenz
-
-© 2026 Ronald Schlenger
