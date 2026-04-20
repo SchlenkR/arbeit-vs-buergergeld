@@ -346,7 +346,6 @@ export function renderLegalNotice(container: HTMLElement): void {
     </section>
 
     <section class="legal-footer">
-      <div class="legal-footer-copy">&copy; 2026 Ronald Schlenger</div>
       <a
         class="legal-footer-link"
         href="https://github.com/SchlenkR/arbeit-vs-buergergeld"
