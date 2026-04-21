@@ -9,6 +9,7 @@ import {
   RUNDFUNKBEITRAG_EUR_MONAT,
   OEPNV_2026,
 } from "./constants2026";
+import { T } from "../i18n";
 import type {
   Haushalt,
   BuergergeldInput,
@@ -107,25 +108,37 @@ export function berechneBuergergeld2026(
 
   if (schulKinder > 0) {
     butDetail.push({
-      label: `Schulbedarfspauschale (${schulKinder} Kind${schulKinder === 1 ? "" : "er"})`,
+      label: T(
+        `Schulbedarfspauschale (${schulKinder} Kind${schulKinder === 1 ? "" : "er"})`,
+        `School supplies allowance (${schulKinder} child${schulKinder === 1 ? "" : "ren"})`,
+      ),
       betragJahr: schulKinder * BUT_2026.schulbedarfEurJahr,
     });
   }
   if (teilhabeKinder > 0) {
     butDetail.push({
-      label: `Teilhabepauschale Freizeit/Verein (${teilhabeKinder} Kind${teilhabeKinder === 1 ? "" : "er"})`,
+      label: T(
+        `Teilhabepauschale Freizeit/Verein (${teilhabeKinder} Kind${teilhabeKinder === 1 ? "" : "er"})`,
+        `Participation allowance leisure/club (${teilhabeKinder} child${teilhabeKinder === 1 ? "" : "ren"})`,
+      ),
       betragJahr: teilhabeKinder * BUT_2026.teilhabeEurMonat * 12,
     });
   }
   if (mittagessenKinder > 0) {
     butDetail.push({
-      label: `Mittagessen Kita/Schule (${mittagessenKinder} Kind${mittagessenKinder === 1 ? "" : "er"})`,
+      label: T(
+        `Mittagessen Kita/Schule (${mittagessenKinder} Kind${mittagessenKinder === 1 ? "" : "er"})`,
+        `Lunch at kindergarten/school (${mittagessenKinder} child${mittagessenKinder === 1 ? "" : "ren"})`,
+      ),
       betragJahr: mittagessenKinder * BUT_2026.mittagessenEurMonat * 12,
     });
   }
   if (klassenfahrtKinder > 0) {
     butDetail.push({
-      label: `Klassenfahrt & Schulausflüge (${klassenfahrtKinder} Kind${klassenfahrtKinder === 1 ? "" : "er"})`,
+      label: T(
+        `Klassenfahrt & Schulausflüge (${klassenfahrtKinder} Kind${klassenfahrtKinder === 1 ? "" : "er"})`,
+        `Class trips & school excursions (${klassenfahrtKinder} child${klassenfahrtKinder === 1 ? "" : "ren"})`,
+      ),
       betragJahr: klassenfahrtKinder * BUT_2026.klassenfahrtSchulausflugEurJahr,
     });
   }
@@ -133,7 +146,10 @@ export function berechneBuergergeld2026(
   // --- Geldwerte Vorteile (Rundfunkbefreiung, Sozialticket / Sozialpass) ---
   const rundfunkErsparnis = RUNDFUNKBEITRAG_EUR_MONAT * 12;
   geldwerteVorteileDetail.push({
-    label: "Rundfunkbeitrag-Befreiung (§ 4 RBStV)",
+    label: T(
+      "Rundfunkbeitrag-Befreiung (§ 4 RBStV)",
+      "Broadcasting-fee exemption (§ 4 RBStV)",
+    ),
     betragJahr: rundfunkErsparnis,
   });
 
@@ -144,7 +160,10 @@ export function berechneBuergergeld2026(
     12;
   if (haushalt.oepnvNutzer > 0) {
     geldwerteVorteileDetail.push({
-      label: `Sozialticket / ÖPNV-Ermäßigung (${haushalt.oepnvNutzer} Pers.)`,
+      label: T(
+        `Sozialticket / ÖPNV-Ermäßigung (${haushalt.oepnvNutzer} Pers.)`,
+        `Welfare ticket / transit discount (${haushalt.oepnvNutzer} pers.)`,
+      ),
       betragJahr: oepnvErsparnis,
     });
   }
@@ -157,7 +176,10 @@ export function berechneBuergergeld2026(
       : OEPNV_2026.sonstigeVorteileEurJahrProErwachsenenCD;
   const sonstigeFpVorteile = erwachseneImHaushalt * sonstigeVorteilePerErw;
   geldwerteVorteileDetail.push({
-    label: "Lokaler Sozialpass (Zoo/Schwimmbad/VHS, geschätzt)",
+    label: T(
+      "Lokaler Sozialpass (Zoo/Schwimmbad/VHS, geschätzt)",
+      "Local welfare pass (zoo/pool/adult-ed, estimated)",
+    ),
     betragJahr: sonstigeFpVorteile,
   });
 
@@ -225,29 +247,38 @@ function berechneErwachsenenRegelbedarfMonat(
 ): number {
   if (haushalt.typ === "single" || haushalt.typ === "alleinerziehend") {
     const rb = REGELBEDARF_2026_EUR_MONAT.alleinstehend;
-    detail.push({ label: "Regelbedarf Erwachsene/r (RBS 1)", betragJahr: rb * 12 });
+    detail.push({
+      label: T("Regelbedarf Erwachsene/r (RBS 1)", "Standard need adult (level 1)"),
+      betragJahr: rb * 12,
+    });
     return rb;
   }
   const rb = REGELBEDARF_2026_EUR_MONAT.partner * 2;
-  detail.push({ label: "Regelbedarf 2 Partner (RBS 2)", betragJahr: rb * 12 });
+  detail.push({
+    label: T("Regelbedarf 2 Partner (RBS 2)", "Standard need 2 partners (level 2)"),
+    betragJahr: rb * 12,
+  });
   return rb;
 }
 
 function regelbedarfFuerKind(alter: number): { label: string; betragMonat: number } {
   if (alter >= 14) {
     return {
-      label: "Regelbedarf Jugendliche(r) 14–17 (RBS 4)",
+      label: T(
+        "Regelbedarf Jugendliche(r) 14-17 (RBS 4)",
+        "Standard need adolescent 14-17 (level 4)",
+      ),
       betragMonat: REGELBEDARF_2026_EUR_MONAT.jugendlicher14Bis17,
     };
   }
   if (alter >= 6) {
     return {
-      label: "Regelbedarf Kind 6–13 (RBS 5)",
+      label: T("Regelbedarf Kind 6-13 (RBS 5)", "Standard need child 6-13 (level 5)"),
       betragMonat: REGELBEDARF_2026_EUR_MONAT.kind6Bis13,
     };
   }
   return {
-    label: "Regelbedarf Kind 0–5 (RBS 6)",
+    label: T("Regelbedarf Kind 0-5 (RBS 6)", "Standard need child 0-5 (level 6)"),
     betragMonat: REGELBEDARF_2026_EUR_MONAT.kind0Bis5,
   };
 }

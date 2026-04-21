@@ -13,12 +13,15 @@ import {
 import { berechneKdU } from "./buergergeld";
 import type { Haushalt } from "./types";
 import type { AntragsAnspruchItem } from "../config";
+import { OVERLAY_ID } from "../config";
+import { T } from "../i18n";
 
 export interface AnspruchPosten {
   label: string;
-  wertMonat: number | null; // null = qualitativ, keine Zahl
+  wertMonat: number | null;
   hinweis?: string;
   paragraf?: string;
+  overlayId?: string;
 }
 
 export interface AnspruchsKategorie {
@@ -26,7 +29,7 @@ export interface AnspruchsKategorie {
   untertitel: string;
   summeMonat: number | null;
   items: AnspruchPosten[];
-  kennzahlen?: string[]; // z.B. "87 qm · 4 Zimmer"
+  kennzahlen?: string[];
   ton?: "positiv" | "neutral" | "minus";
 }
 
@@ -37,15 +40,6 @@ export interface Anspruchsuebersicht {
   kategorien: AnspruchsKategorie[];
 }
 
-/**
- * Baut eine strukturierte Übersicht aller Ansprüche eines Bürgergeld-berechtigten
- * Haushalts, explizit sichtbar pro Lebensbereich. Ergänzt die Cashflow-Rechnung um
- * qualitative Ansprüche (Wohnungsgröße, KV-Pflichtversicherung, Einmalleistungen).
- *
- * Optional: `antragsItems` überdeckt qualitative "auf Antrag"-Zeilen (wertMonat: null)
- * mit konkreten €-Werten aus dem aktiven Antrags-Preset. Nicht überdeckte Positionen
- * bleiben als "auf Antrag" sichtbar.
- */
 export function buildAnspruchsuebersicht(
   haushalt: Haushalt,
   antragsItems: AntragsAnspruchItem[] = [],
@@ -75,7 +69,7 @@ export function buildAnspruchsuebersicht(
 function buildOverlay(items: AntragsAnspruchItem[]): Map<string, AntragsAnspruchItem> {
   const m = new Map<string, AntragsAnspruchItem>();
   for (const it of items) {
-    if (it.ersetztAnspruch) m.set(it.ersetztAnspruch, it);
+    if (it.ersetztAnspruchId) m.set(it.ersetztAnspruchId, it);
   }
   return m;
 }
@@ -87,15 +81,21 @@ function applyOverlay(
   if (overlay.size === 0) return k;
   let touched = false;
   const items = k.items.map((it): AnspruchPosten => {
-    const hit = overlay.get(it.label);
+    if (!it.overlayId) return it;
+    const hit = overlay.get(it.overlayId);
     if (!hit || it.wertMonat !== null) return it;
     touched = true;
-    return {
+    const next: AnspruchPosten = {
       label: it.label,
       wertMonat: hit.eurMonat,
-      hinweis: `Annahme aus aktivem Antrags-Szenario: ${hit.quelle}`,
-      paragraf: hit.paragraf,
+      hinweis: T(
+        `Annahme aus aktivem Antrags-Szenario: ${hit.quelle}`,
+        `Assumption from active application scenario: ${hit.quelle}`,
+      ),
     };
+    if (hit.paragraf) next.paragraf = hit.paragraf;
+    if (it.overlayId) next.overlayId = it.overlayId;
+    return next;
   });
   if (!touched) return k;
   const hasPositiveValue = items.some((i) => (i.wertMonat ?? 0) > 0);
@@ -125,53 +125,78 @@ function kategorieWohnung(haushalt: Haushalt, personen: number): AnspruchsKatego
   const zimmer = personen + 1;
 
   return {
-    titel: "Wohnung",
-    untertitel: "Kosten der Unterkunft § 22 SGB II",
+    titel: T("Wohnung", "Housing"),
+    untertitel: T("Kosten der Unterkunft § 22 SGB II", "Housing costs § 22 SGB II"),
     summeMonat: gesamtKdu,
     kennzahlen: [
-      `${qm} m² Wohnfläche`,
-      `~ ${zimmer} Zimmer`,
-      `Wohnlage ${haushalt.wohnlage}`,
+      T(`${qm} m² Wohnfläche`, `${qm} m² living space`),
+      T(`~ ${zimmer} Zimmer`, `~ ${zimmer} rooms`),
+      T(`Wohnlage ${haushalt.wohnlage}`, `Residential tier ${haushalt.wohnlage}`),
     ],
     ton: "positiv",
     items: [
       {
-        label: "Angemessene Bruttokaltmiete",
+        label: T("Angemessene Bruttokaltmiete", "Reasonable cold rent"),
         wertMonat: bruttokalt,
-        hinweis: "Wird 1:1 übernommen bis zur regionalen Angemessenheitsgrenze.",
+        hinweis: T(
+          "Wird 1:1 übernommen bis zur regionalen Angemessenheitsgrenze.",
+          "Covered 1:1 up to the regional reasonableness limit.",
+        ),
         paragraf: "§ 22 Abs. 1 SGB II",
       },
       {
-        label: "Heizkosten (tatsächlich, in angemessener Höhe)",
+        label: T(
+          "Heizkosten (tatsächlich, in angemessener Höhe)",
+          "Heating costs (actual, at reasonable level)",
+        ),
         wertMonat: Math.round(heizkosten),
-        hinweis: `Ansatz: ${w.heizkostenEurProQmMonat.toFixed(2).replace(".", ",")} €/m² (Bundesheizkostenspiegel).`,
+        hinweis: T(
+          `Ansatz: ${w.heizkostenEurProQmMonat.toFixed(2).replace(".", ",")} €/m² (Bundesheizkostenspiegel).`,
+          `Basis: ${w.heizkostenEurProQmMonat.toFixed(2)} €/m² (federal heating cost index).`,
+        ),
         paragraf: "§ 22 Abs. 1 Satz 3 SGB II",
       },
       {
-        label: "Nebenkostennachzahlungen",
+        label: T("Nebenkostennachzahlungen", "Utility back-payments"),
         wertMonat: null,
-        hinweis: "Werden im Monat der Fälligkeit als einmaliger Bedarf zusätzlich übernommen.",
+        hinweis: T(
+          "Werden im Monat der Fälligkeit als einmaliger Bedarf zusätzlich übernommen.",
+          "Covered in the month they come due as a one-off additional need.",
+        ),
         paragraf: "§ 22 Abs. 1 Satz 4 SGB II",
+        overlayId: OVERLAY_ID.NEBENKOSTENNACHZAHLUNGEN,
       },
       {
-        label: "Mietkaution bei Umzug",
+        label: T("Mietkaution bei Umzug", "Rental deposit on moving"),
         wertMonat: null,
-        hinweis: "Auf Antrag als Darlehen (zinslos), verrechnet mit künftigen Regelbedarfen.",
+        hinweis: T(
+          "Auf Antrag als Darlehen (zinslos), verrechnet mit künftigen Regelbedarfen.",
+          "On request as an interest-free loan, offset against future standard needs.",
+        ),
         paragraf: "§ 22 Abs. 6 SGB II",
       },
       {
-        label: "Umzugskosten bei Wohnungswechsel",
+        label: T("Umzugskosten bei Wohnungswechsel", "Moving costs when changing flats"),
         wertMonat: null,
-        hinweis:
-          "Spedition, Kartons, Helfer — tatsächliche Kosten werden übernommen, wenn Umzug notwendig ist.",
+        hinweis: T(
+          "Spedition, Kartons, Helfer; tatsächliche Kosten werden übernommen, wenn Umzug notwendig ist.",
+          "Movers, boxes, helpers; actual costs are covered when the move is necessary.",
+        ),
         paragraf: "§ 22 Abs. 6 SGB II",
+        overlayId: OVERLAY_ID.UMZUGSKOSTEN,
       },
       {
-        label: "Einzugs- und Schönheitsreparaturen",
+        label: T(
+          "Einzugs- und Schönheitsreparaturen",
+          "Move-in and cosmetic repairs",
+        ),
         wertMonat: null,
-        hinweis:
+        hinweis: T(
           "Renovierung bei Einzug und Auszug (Streichen, Tapezieren), sofern mietvertraglich geschuldet.",
+          "Renovation on move-in and move-out (painting, wallpapering) where contractually required.",
+        ),
         paragraf: "§ 22 Abs. 6 SGB II",
+        overlayId: OVERLAY_ID.EINZUGSRENOVIERUNG,
       },
     ],
   };
@@ -183,13 +208,16 @@ function kategorieRegelbedarf(haushalt: Haushalt, erwachsene: number): Anspruchs
 
   if (erwachsene === 1) {
     items.push({
-      label: "Erwachsene/r (Regelbedarfsstufe 1)",
+      label: T("Erwachsene/r (Regelbedarfsstufe 1)", "Adult (standard need level 1)"),
       wertMonat: REGELBEDARF_2026_EUR_MONAT.alleinstehend,
       paragraf: "§ 20 Abs. 2 SGB II",
     });
   } else {
     items.push({
-      label: "2 Partner (Regelbedarfsstufe 2, je 506 €)",
+      label: T(
+        "2 Partner (Regelbedarfsstufe 2, je 506 €)",
+        "2 partners (standard need level 2, 506 € each)",
+      ),
       wertMonat: REGELBEDARF_2026_EUR_MONAT.partner * 2,
       paragraf: "§ 20 Abs. 4 SGB II",
     });
@@ -198,19 +226,28 @@ function kategorieRegelbedarf(haushalt: Haushalt, erwachsene: number): Anspruchs
   for (const kind of haushalt.kinder) {
     if (kind.alter >= 14) {
       items.push({
-        label: `Jugendliche/r ${kind.alter} J. (RBS 4)`,
+        label: T(
+          `Jugendliche/r ${kind.alter} J. (RBS 4)`,
+          `Adolescent age ${kind.alter} (level 4)`,
+        ),
         wertMonat: REGELBEDARF_2026_EUR_MONAT.jugendlicher14Bis17,
         paragraf: "§ 23 Nr. 1 SGB II",
       });
     } else if (kind.alter >= 6) {
       items.push({
-        label: `Kind ${kind.alter} J. (RBS 5)`,
+        label: T(
+          `Kind ${kind.alter} J. (RBS 5)`,
+          `Child age ${kind.alter} (level 5)`,
+        ),
         wertMonat: REGELBEDARF_2026_EUR_MONAT.kind6Bis13,
         paragraf: "§ 23 Nr. 2 SGB II",
       });
     } else {
       items.push({
-        label: `Kind ${kind.alter} J. (RBS 6)`,
+        label: T(
+          `Kind ${kind.alter} J. (RBS 6)`,
+          `Child age ${kind.alter} (level 6)`,
+        ),
         wertMonat: REGELBEDARF_2026_EUR_MONAT.kind0Bis5,
         paragraf: "§ 23 Nr. 3 SGB II",
       });
@@ -220,17 +257,20 @@ function kategorieRegelbedarf(haushalt: Haushalt, erwachsene: number): Anspruchs
   const summe = items.reduce((s, i) => s + (i.wertMonat ?? 0), 0);
 
   return {
-    titel: "Regelbedarf (frei verfügbar)",
-    untertitel: "Deckt Ernährung, Kleidung, Strom, Freizeit",
+    titel: T("Regelbedarf (frei verfügbar)", "Standard need (freely disposable)"),
+    untertitel: T(
+      "Deckt Ernährung, Kleidung, Strom, Freizeit",
+      "Covers food, clothing, electricity, leisure",
+    ),
     summeMonat: summe,
     ton: "positiv",
     items,
     kennzahlen: [
-      `Essen ~${Math.round(a.nahrungsmittelGetraenke)}€`,
-      `Kleidung ~${Math.round(a.bekleidungSchuhe)}€`,
-      `Strom ~${Math.round(a.wohnenEnergieInstandhaltung)}€`,
-      `Freizeit ~${Math.round(a.freizeitKultur)}€`,
-      `Telefon/Internet ~${Math.round(a.nachrichtenInternet)}€`,
+      T(`Essen ~${Math.round(a.nahrungsmittelGetraenke)}€`, `Food ~${Math.round(a.nahrungsmittelGetraenke)}€`),
+      T(`Kleidung ~${Math.round(a.bekleidungSchuhe)}€`, `Clothing ~${Math.round(a.bekleidungSchuhe)}€`),
+      T(`Strom ~${Math.round(a.wohnenEnergieInstandhaltung)}€`, `Electricity ~${Math.round(a.wohnenEnergieInstandhaltung)}€`),
+      T(`Freizeit ~${Math.round(a.freizeitKultur)}€`, `Leisure ~${Math.round(a.freizeitKultur)}€`),
+      T(`Telefon/Internet ~${Math.round(a.nachrichtenInternet)}€`, `Phone/internet ~${Math.round(a.nachrichtenInternet)}€`),
     ],
   };
 }
@@ -243,35 +283,49 @@ function kategorieKrankenversicherung(
   const pv = BUERGERGELD_KV_PV_PAUSCHALE_2026.pflegeversicherungMonat * erwachsene;
 
   return {
-    titel: "Krankenversicherung",
-    untertitel: "Pflichtversicherung in der GKV",
+    titel: T("Krankenversicherung", "Health insurance"),
+    untertitel: T("Pflichtversicherung in der GKV", "Mandatory public health insurance"),
     summeMonat: kv + pv,
     ton: "positiv",
     kennzahlen: [
-      "volle GKV-Leistungen",
-      "Familienversicherung Kinder",
-      "keine Eigenbeiträge",
+      T("volle GKV-Leistungen", "full public health benefits"),
+      T("Familienversicherung Kinder", "family coverage for children"),
+      T("keine Eigenbeiträge", "no own contributions"),
     ],
     items: [
       {
-        label: "Krankenversicherung (GKV) — Beiträge vom Jobcenter",
+        label: T(
+          "Krankenversicherung (GKV); Beiträge vom Jobcenter",
+          "Health insurance (public); premiums paid by jobcenter",
+        ),
         wertMonat: kv,
-        hinweis:
+        hinweis: T(
           "Pflichtversicherung, Jobcenter zahlt pauschalen Monatsbeitrag direkt an die Krankenkasse. Für den Haushalt keine Eigenleistung.",
+          "Mandatory coverage; the jobcenter pays a flat monthly premium directly to the health fund. No own contribution for the household.",
+        ),
         paragraf: "§ 5 Abs. 1 Nr. 2a SGB V iVm § 251 Abs. 4 SGB V",
       },
       {
-        label: "Pflegeversicherung (PV) — Beiträge vom Jobcenter",
+        label: T(
+          "Pflegeversicherung (PV); Beiträge vom Jobcenter",
+          "Long-term care insurance; premiums paid by jobcenter",
+        ),
         wertMonat: pv,
-        hinweis: "Analog zur GKV, Beitrag je Erwachsenem. Kinder über Familienversicherung.",
+        hinweis: T(
+          "Analog zur GKV, Beitrag je Erwachsenem. Kinder über Familienversicherung.",
+          "Analogous to public health insurance, premium per adult. Children via family coverage.",
+        ),
         paragraf: "§ 20 Abs. 1 Nr. 2a SGB XI",
       },
       {
-        label: "Zuzahlungsbefreiung",
+        label: T("Zuzahlungsbefreiung", "Co-payment exemption"),
         wertMonat: null,
-        hinweis:
+        hinweis: T(
           "Belastungsgrenze für Medikamente/Behandlungen: 2 % des Jahresregelsatzes (bzw. 1 % bei chronisch Kranken). Danach vollständig zuzahlungsfrei.",
+          "Burden limit for medication/treatment: 2 % of the annual standard rate (1 % for chronically ill). Beyond that, fully exempt from co-payments.",
+        ),
         paragraf: "§ 62 SGB V",
+        overlayId: OVERLAY_ID.ZUZAHLUNGSBEFREIUNG,
       },
     ],
   };
@@ -281,7 +335,6 @@ function kategorieMehrbedarfe(haushalt: Haushalt): AnspruchsKategorie {
   const items: AnspruchPosten[] = [];
   const rbs1 = REGELBEDARF_2026_EUR_MONAT.alleinstehend;
 
-  // Alleinerziehend
   if (haushalt.typ === "alleinerziehend" && haushalt.kinder.length > 0) {
     const kinderU7 = haushalt.kinder.filter((k) => k.alter < 7).length;
     const kinderU16 = haushalt.kinder.filter((k) => k.alter < 16).length;
@@ -295,58 +348,79 @@ function kategorieMehrbedarfe(haushalt: Haushalt): AnspruchsKategorie {
     );
     const pct = Math.max(pauschale36, proKind);
     items.push({
-      label: `Alleinerziehend (${(pct * 100).toFixed(0)} % RBS 1)`,
+      label: T(
+        `Alleinerziehend (${(pct * 100).toFixed(0)} % RBS 1)`,
+        `Single parent (${(pct * 100).toFixed(0)} % of level 1)`,
+      ),
       wertMonat: rbs1 * pct,
       paragraf: "§ 21 Abs. 3 SGB II",
     });
   } else {
     items.push({
-      label: "Alleinerziehend",
+      label: T("Alleinerziehend", "Single parent"),
       wertMonat: null,
-      hinweis: "Trifft nicht zu (Voraussetzung: alleinerziehend mit Kind im Haushalt).",
+      hinweis: T(
+        "Trifft nicht zu (Voraussetzung: alleinerziehend mit Kind im Haushalt).",
+        "Not applicable (requires single parent with child in household).",
+      ),
       paragraf: "§ 21 Abs. 3 SGB II",
     });
   }
 
-  // Warmwasser dezentral
   if (haushalt.warmwasserDezentral) {
     items.push({
-      label: "Dezentrale Warmwasserbereitung",
+      label: T("Dezentrale Warmwasserbereitung", "Decentralised hot water supply"),
       wertMonat: null,
-      hinweis: `2,3 % RBS 1 für Erwachsene, 0,8–1,4 % für Kinder je nach Alter. Aktiv.`,
+      hinweis: T(
+        "2,3 % RBS 1 für Erwachsene, 0,8-1,4 % für Kinder je nach Alter. Aktiv.",
+        "2.3 % of level 1 for adults, 0.8-1.4 % for children depending on age. Active.",
+      ),
       paragraf: "§ 21 Abs. 7 SGB II",
     });
   } else {
     items.push({
-      label: "Dezentrale Warmwasserbereitung",
+      label: T("Dezentrale Warmwasserbereitung", "Decentralised hot water supply"),
       wertMonat: null,
-      hinweis: "Nur bei Boiler/Durchlauferhitzer — hier nicht aktiviert.",
+      hinweis: T(
+        "Nur bei Boiler/Durchlauferhitzer; hier nicht aktiviert.",
+        "Only with boiler or instantaneous water heater; not active here.",
+      ),
       paragraf: "§ 21 Abs. 7 SGB II",
     });
   }
 
-  // Schwangerschaft
   if (haushalt.schwangerschaftAb13SSW) {
     items.push({
-      label: "Schwangerschaft ab 13. SSW (17 % RBS 1)",
+      label: T(
+        "Schwangerschaft ab 13. SSW (17 % RBS 1)",
+        "Pregnancy from 13th week (17 % of level 1)",
+      ),
       wertMonat: rbs1 * MEHRBEDARF_SCHWANGERSCHAFT_PCT,
       paragraf: "§ 21 Abs. 2 SGB II",
     });
   }
 
   items.push({
-    label: "Behinderung / Erwerbsminderung",
+    label: T("Behinderung / Erwerbsminderung", "Disability / reduced earning capacity"),
     wertMonat: null,
-    hinweis:
+    hinweis: T(
       "35 % RBS 1 bei Teilhabe-Bezug (§ 21 Abs. 4). 17 % bei Gehbehinderung mit Merkzeichen G. Hier nicht modelliert.",
+      "35 % of level 1 with participation benefits (§ 21(4)). 17 % with walking disability (marker G). Not modelled here.",
+    ),
     paragraf: "§ 21 Abs. 4 SGB II",
   });
   items.push({
-    label: "Kostenaufwändige Ernährung (ärztlich)",
+    label: T(
+      "Kostenaufwändige Ernährung (ärztlich)",
+      "Medically-required diet (certified)",
+    ),
     wertMonat: null,
-    hinweis:
-      "Bei Zöliakie, Niereninsuffizienz u.ä. — nach Empfehlungen des Deutschen Vereins, ärztliches Attest nötig. Nicht modelliert.",
+    hinweis: T(
+      "Bei Zöliakie, Niereninsuffizienz u. ä.; nach Empfehlungen des Deutschen Vereins, ärztliches Attest nötig. Nicht modelliert.",
+      "For coeliac disease, renal failure etc.; following recommendations of the Deutscher Verein, medical certificate required. Not modelled.",
+    ),
     paragraf: "§ 21 Abs. 5 SGB II",
+    overlayId: OVERLAY_ID.KOSTENAUFW_ERNAEHRUNG,
   });
 
   const summe = items
@@ -354,8 +428,11 @@ function kategorieMehrbedarfe(haushalt: Haushalt): AnspruchsKategorie {
     .reduce((s, i) => s + (i.wertMonat ?? 0), 0);
 
   return {
-    titel: "Mehrbedarfe",
-    untertitel: "Zusätzliche Bedarfe in Sonderlagen",
+    titel: T("Mehrbedarfe", "Additional needs"),
+    untertitel: T(
+      "Zusätzliche Bedarfe in Sonderlagen",
+      "Additional needs in special situations",
+    ),
     summeMonat: summe > 0 ? summe : null,
     ton: summe > 0 ? "positiv" : "neutral",
     items,
@@ -365,15 +442,15 @@ function kategorieMehrbedarfe(haushalt: Haushalt): AnspruchsKategorie {
 function kategorieBildungTeilhabe(haushalt: Haushalt): AnspruchsKategorie {
   if (haushalt.kinder.length === 0) {
     return {
-      titel: "Bildung & Teilhabe",
-      untertitel: "§ 28 SGB II — nur bei Kindern",
+      titel: T("Bildung & Teilhabe", "Education & participation"),
+      untertitel: T("§ 28 SGB II; nur bei Kindern", "§ 28 SGB II; only with children"),
       summeMonat: null,
       ton: "neutral",
       items: [
         {
-          label: "Nicht anwendbar",
+          label: T("Nicht anwendbar", "Not applicable"),
           wertMonat: null,
-          hinweis: "Kein Kind im Haushalt.",
+          hinweis: T("Kein Kind im Haushalt.", "No child in the household."),
         },
       ],
     };
@@ -391,65 +468,99 @@ function kategorieBildungTeilhabe(haushalt: Haushalt): AnspruchsKategorie {
 
   if (schulKinder > 0) {
     items.push({
-      label: `Schulbedarfspauschale (${schulKinder} Kind${schulKinder === 1 ? "" : "er"})`,
+      label: T(
+        `Schulbedarfspauschale (${schulKinder} Kind${schulKinder === 1 ? "" : "er"})`,
+        `School supplies allowance (${schulKinder} child${schulKinder === 1 ? "" : "ren"})`,
+      ),
       wertMonat: (schulKinder * BUT_2026.schulbedarfEurJahr) / 12,
-      hinweis: `${BUT_2026.schulbedarfEurJahr} €/Jahr — 130 € zum 1.8. + 65 € zum 1.2.`,
+      hinweis: T(
+        `${BUT_2026.schulbedarfEurJahr} €/Jahr; 130 € zum 1.8. + 65 € zum 1.2.`,
+        `${BUT_2026.schulbedarfEurJahr} €/year; 130 € on 1 Aug + 65 € on 1 Feb.`,
+      ),
       paragraf: "§ 28 Abs. 3 SGB II",
     });
   }
   if (teilhabeKinder > 0) {
     items.push({
-      label: `Teilhabe Freizeit/Verein/Kultur (${teilhabeKinder})`,
+      label: T(
+        `Teilhabe Freizeit/Verein/Kultur (${teilhabeKinder})`,
+        `Participation leisure/club/culture (${teilhabeKinder})`,
+      ),
       wertMonat: teilhabeKinder * BUT_2026.teilhabeEurMonat,
-      hinweis: "Z.B. Sportverein, Musikschule, Kulturangebote.",
+      hinweis: T(
+        "Z. B. Sportverein, Musikschule, Kulturangebote.",
+        "E. g. sports clubs, music schools, cultural offerings.",
+      ),
       paragraf: "§ 28 Abs. 7 SGB II",
     });
   }
   if (mittagessenKinder > 0) {
     items.push({
-      label: `Mittagessen Kita/Schule (${mittagessenKinder})`,
+      label: T(
+        `Mittagessen Kita/Schule (${mittagessenKinder})`,
+        `Lunch at kindergarten/school (${mittagessenKinder})`,
+      ),
       wertMonat: mittagessenKinder * BUT_2026.mittagessenEurMonat,
-      hinweis: "Eigenanteil am Mittagessen wird in voller Höhe übernommen.",
+      hinweis: T(
+        "Eigenanteil am Mittagessen wird in voller Höhe übernommen.",
+        "Own contribution for lunch is covered in full.",
+      ),
       paragraf: "§ 28 Abs. 6 SGB II",
     });
   }
   if (klassenfahrtKinder > 0) {
     items.push({
-      label: `Klassenfahrt/Schulausflüge (${klassenfahrtKinder})`,
+      label: T(
+        `Klassenfahrt/Schulausflüge (${klassenfahrtKinder})`,
+        `School trips/excursions (${klassenfahrtKinder})`,
+      ),
       wertMonat: (klassenfahrtKinder * BUT_2026.klassenfahrtSchulausflugEurJahr) / 12,
-      hinweis: "Tatsächliche Kosten — Schätzung 250 €/Jahr/Schulkind.",
+      hinweis: T(
+        "Tatsächliche Kosten; Schätzung 250 €/Jahr/Schulkind.",
+        "Actual costs; estimate 250 €/year/school child.",
+      ),
       paragraf: "§ 28 Abs. 2 SGB II",
     });
   }
   items.push({
-    label: "Schüler-Beförderung",
+    label: T("Schüler-Beförderung", "Student transport"),
     wertMonat: null,
-    hinweis: "Tatsächliche Schülerticket-Kosten, sofern nötig und nicht anderweitig abgedeckt.",
+    hinweis: T(
+      "Tatsächliche Schülerticket-Kosten, sofern nötig und nicht anderweitig abgedeckt.",
+      "Actual student ticket costs where needed and not otherwise covered.",
+    ),
     paragraf: "§ 28 Abs. 4 SGB II",
+    overlayId: OVERLAY_ID.SCHUELER_BEFOERDERUNG,
   });
   items.push({
-    label: "Lernförderung / Nachhilfe",
+    label: T("Lernförderung / Nachhilfe", "Tutoring / remedial teaching"),
     wertMonat: null,
-    hinweis:
-      "Nach Bedarf bei Lernzielgefährdung. Kein Pauschalbetrag — Antrag auf konkrete Lernförderung.",
+    hinweis: T(
+      "Nach Bedarf bei Lernzielgefährdung. Kein Pauschalbetrag; Antrag auf konkrete Lernförderung.",
+      "As needed where learning objectives are at risk. No flat rate; application for specific support.",
+    ),
     paragraf: "§ 28 Abs. 5 SGB II",
+    overlayId: OVERLAY_ID.LERNFOERDERUNG,
   });
   const kinderU3 = haushalt.kinder.filter((k) => k.alter < 3).length;
   if (kinderU3 > 0) {
     items.push({
-      label: "Kita-Gebührenbefreiung (U3)",
+      label: T("Kita-Gebührenbefreiung (U3)", "Kindergarten fee exemption (under 3)"),
       wertMonat: null,
-      hinweis:
+      hinweis: T(
         "In den meisten Kommunen: volle Erstattung der Kita-Gebühren für U3-Kinder bei BG-Bezug. Beantragung beim Jugendamt.",
+        "In most municipalities: full reimbursement of kindergarten fees for under-3 children on Bürgergeld. Apply at the youth office.",
+      ),
       paragraf: "§ 90 SGB VIII",
+      overlayId: OVERLAY_ID.KITA_GEBUEHREN_U3,
     });
   }
 
   const summe = items.reduce((s, i) => s + (i.wertMonat ?? 0), 0);
 
   return {
-    titel: "Bildung & Teilhabe",
-    untertitel: "§ 28 SGB II — pro Kind",
+    titel: T("Bildung & Teilhabe", "Education & participation"),
+    untertitel: T("§ 28 SGB II; pro Kind", "§ 28 SGB II; per child"),
     summeMonat: summe,
     ton: "positiv",
     items,
@@ -458,35 +569,64 @@ function kategorieBildungTeilhabe(haushalt: Haushalt): AnspruchsKategorie {
 
 function kategorieEinmalleistungen(): AnspruchsKategorie {
   return {
-    titel: "Einmalleistungen",
-    untertitel: "§ 24 SGB II — bei Bedarf",
+    titel: T("Einmalleistungen", "One-off benefits"),
+    untertitel: T("§ 24 SGB II; bei Bedarf", "§ 24 SGB II; as needed"),
     summeMonat: null,
     ton: "neutral",
-    kennzahlen: ["auf Antrag", "ohne Anrechnung Regelbedarf"],
+    kennzahlen: [
+      T("auf Antrag", "on request"),
+      T("ohne Anrechnung Regelbedarf", "no offset against standard need"),
+    ],
     items: [
       {
-        label: "Erstausstattung Wohnung (Möbel, Haushaltsgeräte)",
+        label: T(
+          "Erstausstattung Wohnung (Möbel, Haushaltsgeräte)",
+          "Initial home equipment (furniture, appliances)",
+        ),
         wertMonat: null,
-        hinweis:
-          "Bei Erstbezug, nach Haft/Klinik, nach Trennung mit Umzug. Pauschalen variieren je Kommune — typisch 800–2.500 € je nach Haushaltsgröße.",
+        hinweis: T(
+          "Bei Erstbezug, nach Haft/Klinik, nach Trennung mit Umzug. Pauschalen variieren je Kommune; typisch 800-2.500 € je nach Haushaltsgröße.",
+          "On first move-in, after custody/clinic, after separation with a move. Lump sums vary by municipality; typically 800-2,500 € depending on household size.",
+        ),
         paragraf: "§ 24 Abs. 3 Nr. 1 SGB II",
+        overlayId: OVERLAY_ID.ERSTAUSSTATTUNG_WOHNUNG,
       },
       {
-        label: "Erstausstattung Bekleidung — Schwangerschaft/Geburt",
+        label: T(
+          "Erstausstattung Bekleidung; Schwangerschaft/Geburt",
+          "Initial clothing; pregnancy/birth",
+        ),
         wertMonat: null,
-        hinweis: "Kinderwagen, Baby-Ausstattung, Umstandsmode. Pauschale kommunal verschieden.",
+        hinweis: T(
+          "Kinderwagen, Baby-Ausstattung, Umstandsmode. Pauschale kommunal verschieden.",
+          "Stroller, baby equipment, maternity clothing. Lump sum differs by municipality.",
+        ),
         paragraf: "§ 24 Abs. 3 Nr. 2 SGB II",
+        overlayId: OVERLAY_ID.ERSTAUSSTATTUNG_BEKLEIDUNG,
       },
       {
-        label: "Orthopädische Schuhe, Reparaturen therapeutischer Geräte",
+        label: T(
+          "Orthopädische Schuhe, Reparaturen therapeutischer Geräte",
+          "Orthopaedic shoes, therapeutic device repairs",
+        ),
         wertMonat: null,
-        hinweis: "Tatsächliche Kosten, soweit nicht von Krankenkasse übernommen.",
+        hinweis: T(
+          "Tatsächliche Kosten, soweit nicht von Krankenkasse übernommen.",
+          "Actual costs where not covered by the health fund.",
+        ),
         paragraf: "§ 24 Abs. 3 Nr. 3 SGB II",
+        overlayId: OVERLAY_ID.ORTHOPAEDISCHE_SCHUHE,
       },
       {
-        label: "Weiße Ware (Waschmaschine, Kühlschrank) bei Defekt",
+        label: T(
+          "Weiße Ware (Waschmaschine, Kühlschrank) bei Defekt",
+          "White goods (washing machine, fridge) on failure",
+        ),
         wertMonat: null,
-        hinweis: "Als Darlehen, wird mit künftigen Regelbedarfen verrechnet (max. 10 %).",
+        hinweis: T(
+          "Als Darlehen, wird mit künftigen Regelbedarfen verrechnet (max. 10 %).",
+          "As a loan, offset against future standard needs (max. 10 %).",
+        ),
         paragraf: "§ 24 Abs. 1 SGB II",
       },
     ],
@@ -503,41 +643,71 @@ function kategorieGeldwerteVorteile(
     OEPNV_2026.deutschlandticketErmaessigtEurMonat;
 
   return {
-    titel: "Geldwerte Vorteile",
-    untertitel: "Kostenersparnisse außerhalb der Auszahlung",
+    titel: T("Geldwerte Vorteile", "In-kind benefits"),
+    untertitel: T(
+      "Kostenersparnisse außerhalb der Auszahlung",
+      "Cost savings outside of cash payouts",
+    ),
     summeMonat: rundfunk + oepnvErsparnis * erwachsene,
     ton: "positiv",
     items: [
       {
-        label: "Rundfunkbeitrag-Befreiung",
+        label: T("Rundfunkbeitrag-Befreiung", "Broadcasting fee exemption"),
         wertMonat: rundfunk,
-        hinweis: "Auf Antrag beim ARD ZDF Deutschlandradio Beitragsservice.",
+        hinweis: T(
+          "Auf Antrag beim ARD ZDF Deutschlandradio Beitragsservice.",
+          "On request via the ARD ZDF Deutschlandradio contribution service.",
+        ),
         paragraf: "§ 4 Abs. 1 Nr. 3 RBStV",
       },
       {
-        label: `Sozialticket Deutschlandticket (${erwachsene} Erw.)`,
+        label: T(
+          `Sozialticket Deutschlandticket (${erwachsene} Erw.)`,
+          `Welfare Deutschlandticket (${erwachsene} adult${erwachsene === 1 ? "" : "s"})`,
+        ),
         wertMonat: oepnvErsparnis * erwachsene,
-        hinweis:
+        hinweis: T(
           "Deutschlandticket für Bürgergeld-Empfänger ~31,50 €/Monat (statt 58 €). Programme je nach Kommune: Sozialticket, Sozialpass, Stadtpass, …",
+          "Deutschlandticket for Bürgergeld recipients ~31.50 €/month (instead of 58 €). Programmes differ by municipality: welfare ticket, welfare pass, city pass, …",
+        ),
       },
       {
-        label: "Telefon-Sozialtarif",
+        label: T("Telefon-Sozialtarif", "Phone welfare rate"),
         wertMonat: null,
-        hinweis:
+        hinweis: T(
           "Telekom Sozialtarif (§ 45n TKG): Ermäßigung auf Grundgebühr und Einheiten. Bis ~8,72 € Erstattung/Monat möglich.",
+          "Telekom welfare rate (§ 45n TKG): reduction on base fee and units. Up to ~8.72 €/month reimbursement possible.",
+        ),
         paragraf: "§ 45n TKG",
+        overlayId: OVERLAY_ID.TELEFON_SOZIALTARIF,
       },
       {
-        label: "Schwimmbad / Museum / Zoo / VHS lokal ermäßigt",
+        label: T(
+          "Schwimmbad / Museum / Zoo / VHS lokal ermäßigt",
+          "Swimming pool / museum / zoo / adult education locally discounted",
+        ),
         wertMonat: null,
-        hinweis: "Lokaler Sozialpass — Umfang variiert stark je Kommune.",
+        hinweis: T(
+          "Lokaler Sozialpass; Umfang variiert stark je Kommune.",
+          "Local welfare pass; scope varies widely by municipality.",
+        ),
+        overlayId: OVERLAY_ID.SCHWIMMBAD_MUSEUM,
       },
       {
-        label: "Weihnachts-/Härtefallbeihilfen (kommunal)",
+        label: T(
+          "Weihnachts-/Härtefallbeihilfen (kommunal)",
+          "Christmas / hardship allowances (municipal)",
+        ),
         wertMonat: null,
-        hinweis:
-          "Kommunale Sozialämter, Wohlfahrtsverbände (Diakonie, Caritas, AWO) und Stiftungen zahlen auf Antrag einmalige Beihilfen — typisch 30–100 €/Person/Jahr.",
-        paragraf: "kommunal, § 21 Abs. 6 SGB II (analog)",
+        hinweis: T(
+          "Kommunale Sozialämter, Wohlfahrtsverbände (Diakonie, Caritas, AWO) und Stiftungen zahlen auf Antrag einmalige Beihilfen; typisch 30-100 €/Person/Jahr.",
+          "Municipal welfare offices, welfare associations (Diakonie, Caritas, AWO) and foundations pay one-off allowances on request; typically 30-100 €/person/year.",
+        ),
+        paragraf: T(
+          "kommunal, § 21 Abs. 6 SGB II (analog)",
+          "municipal, § 21(6) SGB II (analogous)",
+        ),
+        overlayId: OVERLAY_ID.WEIHNACHTSBEIHILFE,
       },
     ],
   };
@@ -547,31 +717,46 @@ function kategorieRentenversicherung(): AnspruchsKategorie {
   const verlust = BUERGERGELD_RV_RENTENVERLUST_PRO_JAHR_BEZUG;
 
   return {
-    titel: "Rentenversicherung",
-    untertitel: "Nachteil: keine Beitragszahlung",
+    titel: T("Rentenversicherung", "Pension insurance"),
+    untertitel: T("Nachteil: keine Beitragszahlung", "Disadvantage: no contributions paid"),
     summeMonat: null,
     ton: "minus",
     items: [
       {
-        label: "Keine RV-Beiträge durch Jobcenter (seit 01.01.2011)",
+        label: T(
+          "Keine RV-Beiträge durch Jobcenter (seit 01.01.2011)",
+          "No pension contributions by jobcenter (since 01 Jan 2011)",
+        ),
         wertMonat: null,
-        hinweis:
-          "Bis 2010 zahlte das Jobcenter einen Mindestbeitrag für ALG-II-Empfänger. Seit Haushaltsbegleitgesetz 2011 entfallen — Bezugsmonate gelten nur noch als Anrechnungszeit ohne Entgeltpunkte.",
+        hinweis: T(
+          "Bis 2010 zahlte das Jobcenter einen Mindestbeitrag für ALG-II-Empfänger. Seit Haushaltsbegleitgesetz 2011 entfallen; Bezugsmonate gelten nur noch als Anrechnungszeit ohne Entgeltpunkte.",
+          "Until 2010 the jobcenter paid a minimum contribution for ALG II recipients. Abolished with the 2011 budget act; benefit months now count only as credited periods without earnings points.",
+        ),
         paragraf: "§ 58 SGB VI",
       },
       {
-        label: "Geschätzte spätere Rentenlücke",
+        label: T(
+          "Geschätzte spätere Rentenlücke",
+          "Estimated future pension gap",
+        ),
         wertMonat: null,
-        hinweis: `Pro Bezugsjahr ca. ${verlust} € weniger spätere Monatsrente (Referenz: Durchschnittsverdienst). Bei langen Bezugsphasen signifikanter Altersarmut-Treiber.`,
+        hinweis: T(
+          `Pro Bezugsjahr ca. ${verlust} € weniger spätere Monatsrente (Referenz: Durchschnittsverdienst). Bei langen Bezugsphasen signifikanter Altersarmut-Treiber.`,
+          `Per year on benefits approx. ${verlust} € less in future monthly pension (reference: average earnings). Over long periods a significant driver of old-age poverty.`,
+        ),
       },
       {
-        label: "Freiwillige RV-Beiträge möglich",
+        label: T(
+          "Freiwillige RV-Beiträge möglich",
+          "Voluntary pension contributions possible",
+        ),
         wertMonat: null,
-        hinweis:
-          "Selbstzahler-Beiträge sind weiterhin zulässig, werden aber nicht aus dem Regelbedarf finanziert — praktisch selten umsetzbar.",
+        hinweis: T(
+          "Selbstzahler-Beiträge sind weiterhin zulässig, werden aber nicht aus dem Regelbedarf finanziert; praktisch selten umsetzbar.",
+          "Self-paid contributions remain permitted, but are not financed from the standard need; rarely practical.",
+        ),
         paragraf: "§ 7 SGB VI",
       },
     ],
   };
 }
-

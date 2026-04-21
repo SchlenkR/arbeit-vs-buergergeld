@@ -1,5 +1,6 @@
 import { SV_2026 } from "./constants2026";
 import type { AbgabenPosten } from "./types";
+import { T } from "../i18n";
 
 export interface SozialabgabenInput {
   /** Arbeitnehmer-Brutto (Jahresgehalt laut Arbeitsvertrag). */
@@ -89,10 +90,34 @@ export function berechneSozialabgabenAngestellt(
     avANJahr,
     avAGJahr,
     detail: [
-      { label: "Krankenversicherung (AN-Anteil)", betragJahr: gkvANJahr },
-      { label: "Pflegeversicherung (AN-Anteil)", betragJahr: pvANJahr },
-      { label: "Rentenversicherung (AN-Anteil)", betragJahr: rvANJahr },
-      { label: "Arbeitslosenversicherung (AN-Anteil)", betragJahr: avANJahr },
+      {
+        label: T(
+          "Krankenversicherung (AN-Anteil)",
+          "Health insurance (employee share)",
+        ),
+        betragJahr: gkvANJahr,
+      },
+      {
+        label: T(
+          "Pflegeversicherung (AN-Anteil)",
+          "Long-term care insurance (employee share)",
+        ),
+        betragJahr: pvANJahr,
+      },
+      {
+        label: T(
+          "Rentenversicherung (AN-Anteil)",
+          "Pension insurance (employee share)",
+        ),
+        betragJahr: rvANJahr,
+      },
+      {
+        label: T(
+          "Arbeitslosenversicherung (AN-Anteil)",
+          "Unemployment insurance (employee share)",
+        ),
+        betragJahr: avANJahr,
+      },
     ],
   };
 }

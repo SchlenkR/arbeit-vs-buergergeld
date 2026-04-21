@@ -1,5 +1,6 @@
 import { berechneVergleich } from "../core/compare";
 import type { Szenario } from "../core/types";
+import { T, fmtEur } from "../i18n";
 
 const BRUTTO_MIN = 10_000;
 const BRUTTO_MAX = 100_000;
@@ -10,14 +11,6 @@ interface Point {
   deltaMonat: number;
 }
 
-/**
- * Rendert ein Liniendiagramm: X = Bruttojahreseinkommen, Y = monatliche Differenz
- * zwischen Arbeits-Netto und Bürgergeld-Verfügbar. Positiv → Differenz zugunsten
- * Arbeit; negativ → Differenz zugunsten Bürgergeld.
- *
- * Alle anderen Parameter bleiben aus dem aktuellen Szenario konstant. So sieht man
- * für denselben Haushalt in derselben Wohnlage, wo die Break-Even-Linie liegt.
- */
 export function renderBreakEvenChart(
   container: HTMLElement,
   szenario: Szenario,
@@ -66,7 +59,7 @@ export function renderBreakEvenChart(
       (v) => `
         <g transform="translate(${xScale(v).toFixed(1)}, ${innerH})">
           <line y2="5"></line>
-          <text y="18" text-anchor="middle">${fmtEur(v, 0)}</text>
+          <text y="18" text-anchor="middle">${fmtEur(v)}</text>
         </g>
       `,
     )
@@ -92,18 +85,24 @@ export function renderBreakEvenChart(
     ? `
       <g class="breakeven-marker" transform="translate(${xScale(breakEven).toFixed(1)}, 0)">
         <line y1="0" y2="${innerH}"></line>
-        <text y="-5" text-anchor="middle">Break-Even ≈ ${fmtEur(breakEven, 0)}</text>
+        <text y="-5" text-anchor="middle">Break-Even ≈ ${fmtEur(breakEven)}</text>
       </g>
     `
     : "";
 
+  const monatLabel = T("Monat", "month");
+
   container.innerHTML = `
     <div class="breakeven-chart">
-      <h3>Differenz „Arbeit − Bürgergeld" nach Brutto (Monat)</h3>
+      <h3>${T(
+        "Differenz „Arbeit − Bürgergeld\" nach Brutto (Monat)",
+        "Difference „Work − Bürgergeld\" by gross income (month)",
+      )}</h3>
       <p class="breakeven-sub">
-        X-Achse: Jahres-Brutto in ${fmtEur(BRUTTO_STEP, 0)}-Schritten ·
-        Y-Achse: Mehreinkommen durch Arbeit pro Monat ·
-        alle übrigen Parameter bleiben aus der aktuellen Konfiguration konstant.
+        ${T(
+          `X-Achse: Jahres-Brutto in ${fmtEur(BRUTTO_STEP)}-Schritten · Y-Achse: Mehreinkommen durch Arbeit pro Monat · alle übrigen Parameter bleiben aus der aktuellen Konfiguration konstant.`,
+          `X axis: gross yearly income in ${fmtEur(BRUTTO_STEP)} steps · Y axis: extra income from work per month · all other parameters stay fixed from the current configuration.`,
+        )}
       </p>
       <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
         <g transform="translate(${margin.left}, ${margin.top})">
@@ -113,7 +112,7 @@ export function renderBreakEvenChart(
           ${breakEvenMarker}
           <g class="current-marker" transform="translate(${markerX.toFixed(1)}, ${markerY.toFixed(1)})">
             <circle r="5"></circle>
-            <text x="8" dy="0.32em">${fmtEurSigned(aktuellerPunkt.deltaMonat)}/Monat @ ${fmtEur(aktuellerPunkt.brutto, 0)}</text>
+            <text x="8" dy="0.32em">${fmtEurSigned(aktuellerPunkt.deltaMonat)}/${monatLabel} @ ${fmtEur(aktuellerPunkt.brutto)}</text>
           </g>
           <g class="axis" transform="translate(0, ${innerH})">
             <line x2="${innerW}"></line>
@@ -141,7 +140,6 @@ function berechnePunkte(szenario: Szenario): Point[] {
   return punkte;
 }
 
-/** Findet die Brutto-Höhe, an der Delta das Vorzeichen wechselt (linear interpoliert). */
 function findeBreakEven(punkte: Point[]): number | null {
   for (let i = 1; i < punkte.length; i++) {
     const a = punkte[i - 1]!;
@@ -176,15 +174,7 @@ function niceStep(raw: number): number {
   return nice * magnitude;
 }
 
-function fmtEur(v: number, fractionDigits: number): string {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: fractionDigits,
-  }).format(v);
-}
-
 function fmtEurSigned(v: number): string {
   const prefix = v > 0 ? "+" : "";
-  return prefix + fmtEur(v, 0);
+  return prefix + fmtEur(v);
 }

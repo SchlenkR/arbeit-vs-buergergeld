@@ -1,6 +1,7 @@
 import * as d3 from "d3";
 import { sankey, sankeyLinkHorizontal, sankeyJustify } from "d3-sankey";
 import type { SankeyData } from "../core/sankey";
+import { T, fmtEur } from "../i18n";
 
 const KATEGORIE_FARBE: Record<string, string> = {
   source: "#2563eb",
@@ -14,7 +15,10 @@ export function renderSankey(container: HTMLElement, data: SankeyData): void {
   container.innerHTML = "";
 
   if (data.links.length === 0) {
-    container.innerHTML += `<p class="muted">Keine Daten.</p>`;
+    container.innerHTML += `<p class="muted">${T(
+      "Keine Daten.",
+      "No data.",
+    )}</p>`;
     return;
   }
 
@@ -134,10 +138,3 @@ export function renderSankey(container: HTMLElement, data: SankeyData): void {
   container.appendChild(footer);
 }
 
-function fmtEur(v: number): string {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(v);
-}

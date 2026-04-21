@@ -1,4 +1,5 @@
 import type { Anspruchsuebersicht, AnspruchsKategorie, AnspruchPosten } from "../core/ansprueche";
+import { T, fmtEur } from "../i18n";
 
 export function renderAnsprueche(
   container: HTMLElement,
@@ -8,22 +9,43 @@ export function renderAnsprueche(
     .filter((k) => k.ton !== "minus" && k.summeMonat !== null)
     .reduce((s, k) => s + (k.summeMonat ?? 0), 0);
 
+  const personenLabel = T(
+    `${uebersicht.personen} Person${uebersicht.personen === 1 ? "" : "en"}`,
+    `${uebersicht.personen} person${uebersicht.personen === 1 ? "" : "s"}`,
+  );
+  const kinderAnz = uebersicht.haushalt.kinder.length;
+  const kinderLabel = T(
+    `${kinderAnz} Kind${kinderAnz === 1 ? "" : "er"}`,
+    `${kinderAnz} child${kinderAnz === 1 ? "" : "ren"}`,
+  );
+  const erwLabel = T(
+    `${uebersicht.erwachsene} Erw.`,
+    `${uebersicht.erwachsene} adult${uebersicht.erwachsene === 1 ? "" : "s"}`,
+  );
+
   container.innerHTML = `
     <section class="ansprueche-section">
       <header class="ansprueche-header">
-        <h2>Was steht diesem Haushalt zu?</h2>
+        <h2>${T(
+          "Was steht diesem Haushalt zu?",
+          "What is this household entitled to?",
+        )}</h2>
         <p class="ansprueche-sub">
-          Bürgergeld-Anspruch für
-          <strong>${uebersicht.personen} Person${uebersicht.personen === 1 ? "" : "en"}</strong>
-          (${uebersicht.erwachsene} Erw. + ${uebersicht.haushalt.kinder.length} Kind${
-            uebersicht.haushalt.kinder.length === 1 ? "" : "er"
-          }) in Wohnlage ${uebersicht.haushalt.wohnlage}.
-          Zzgl. einmaliger Leistungen und Sachleistungen.
+          ${T("Bürgergeld-Anspruch für", "Bürgergeld entitlement for")}
+          <strong>${personenLabel}</strong>
+          (${erwLabel} + ${kinderLabel}) ${T("in Wohnlage", "in residential tier")} ${uebersicht.haushalt.wohnlage}.
+          ${T(
+            "Zzgl. einmaliger Leistungen und Sachleistungen.",
+            "Plus one-off benefits and in-kind benefits.",
+          )}
         </p>
         <p class="ansprueche-gesamt">
-          Quantifizierbarer Anspruch:
-          <strong>${fmt(gesamtMonat)}</strong> / Monat
-          <span class="muted">(ohne Einmalleistungen §24)</span>
+          ${T("Quantifizierbarer Anspruch", "Quantifiable entitlement")}:
+          <strong>${fmtEur(gesamtMonat)}</strong> / ${T("Monat", "month")}
+          <span class="muted">(${T(
+            "ohne Einmalleistungen §24",
+            "excluding one-off benefits § 24",
+          )})</span>
         </p>
       </header>
       <div class="ansprueche-grid">
@@ -36,8 +58,14 @@ export function renderAnsprueche(
 function renderKategorie(k: AnspruchsKategorie): string {
   const tonClass = `tone-${k.ton ?? "neutral"}`;
   const summe = k.summeMonat !== null
-    ? `<div class="kategorie-summe">${fmt(k.summeMonat)} <span class="muted">/ Monat</span></div>`
-    : `<div class="kategorie-summe kategorie-summe-qual">nach Bedarf</div>`;
+    ? `<div class="kategorie-summe">${fmtEur(k.summeMonat)} <span class="muted">/ ${T(
+        "Monat",
+        "month",
+      )}</span></div>`
+    : `<div class="kategorie-summe kategorie-summe-qual">${T(
+        "nach Bedarf",
+        "as needed",
+      )}</div>`;
   const kennzahlen = k.kennzahlen && k.kennzahlen.length > 0
     ? `<div class="kategorie-kennzahlen">${k.kennzahlen
         .map((kz) => `<span class="kennzahl">${kz}</span>`)
@@ -62,8 +90,8 @@ function renderKategorie(k: AnspruchsKategorie): string {
 function renderItem(i: AnspruchPosten): string {
   const wert =
     i.wertMonat !== null && i.wertMonat !== undefined
-      ? `<span class="anspruch-wert">${fmt(i.wertMonat)}/Mo</span>`
-      : `<span class="anspruch-wert-qual">auf Antrag</span>`;
+      ? `<span class="anspruch-wert">${fmtEur(i.wertMonat)}/${T("Mo", "mo")}</span>`
+      : `<span class="anspruch-wert-qual">${T("auf Antrag", "on request")}</span>`;
   const para = i.paragraf
     ? `<span class="anspruch-paragraf">${i.paragraf}</span>`
     : "";
@@ -78,12 +106,4 @@ function renderItem(i: AnspruchPosten): string {
       ${hinweis}
     </li>
   `;
-}
-
-function fmt(v: number): string {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(v);
 }

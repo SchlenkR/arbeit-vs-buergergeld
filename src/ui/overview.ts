@@ -1,4 +1,5 @@
 import type { VergleichsErgebnis } from "../core/types";
+import { T, fmtEur } from "../i18n";
 
 export function renderOverviewArbeit(
   container: HTMLElement,
@@ -8,7 +9,13 @@ export function renderOverviewArbeit(
   container.innerHTML = `
     <div class="overview-card overview-arbeit">
       <div class="overview-value">${fmtEur(arbeitMonat)}</div>
-      <div class="overview-sub">frei verfügbar<br><span class="muted">pro Monat nach Steuern, SV, Miete, Rundfunk, ÖPNV</span></div>
+      <div class="overview-sub">${T(
+        "frei verfügbar",
+        "free disposable",
+      )}<br><span class="muted">${T(
+        "pro Monat nach Steuern, SV, Miete, Rundfunk, ÖPNV",
+        "per month after taxes, social insurance, rent, broadcasting fee, transit",
+      )}</span></div>
     </div>
   `;
 }
@@ -21,8 +28,14 @@ export function renderOverviewBg(
   const schwarz = ergebnis.buergergeld.schwarzarbeitJahr / 12;
   const sub =
     schwarz > 0
-      ? `frei verfügbar<br><span class="muted">pro Monat nach Miete, ÖPNV · inkl. ${fmtEur(schwarz)} nicht gemeldeter Nebeneinkünfte</span>`
-      : `frei verfügbar<br><span class="muted">pro Monat nach Miete, ÖPNV (+ geldw. Vorteile)</span>`;
+      ? `${T("frei verfügbar", "free disposable")}<br><span class="muted">${T(
+          `pro Monat nach Miete, ÖPNV · inkl. ${fmtEur(schwarz)} nicht gemeldeter Nebeneinkünfte`,
+          `per month after rent, transit · incl. ${fmtEur(schwarz)} undeclared side income`,
+        )}</span>`
+      : `${T("frei verfügbar", "free disposable")}<br><span class="muted">${T(
+          "pro Monat nach Miete, ÖPNV (+ geldw. Vorteile)",
+          "per month after rent, transit (+ in-kind benefits)",
+        )}</span>`;
   container.innerHTML = `
     <div class="overview-card overview-bg">
       <div class="overview-value">${fmtEur(bgMonat)}</div>
@@ -50,16 +63,28 @@ export function renderOverviewDelta(
   let variantClass: string;
 
   if (deltaPositive) {
-    verdict = "Differenz zugunsten Arbeit";
-    subText = "Monatliche Differenz unter den aktuellen Annahmen";
+    verdict = T("Differenz zugunsten Arbeit", "Difference favours work");
+    subText = T(
+      "Monatliche Differenz unter den aktuellen Annahmen",
+      "Monthly difference under the current assumptions",
+    );
     variantClass = "positive";
   } else if (nurDurchSchwarz) {
-    verdict = "Differenz kippt nur durch illegale Nebeneinkünfte";
-    subText = `Ohne nicht gemeldete Nebeneinkünfte (${fmtEur(schwarzMonat)}/Monat) läge Arbeit vorn.`;
+    verdict = T(
+      "Differenz kippt nur durch illegale Nebeneinkünfte",
+      "Difference only tips due to illegal side income",
+    );
+    subText = T(
+      `Ohne nicht gemeldete Nebeneinkünfte (${fmtEur(schwarzMonat)}/Monat) läge Arbeit vorn.`,
+      `Without undeclared side income (${fmtEur(schwarzMonat)}/month), work would be ahead.`,
+    );
     variantClass = "negative has-schwarz";
   } else {
-    verdict = "Differenz zugunsten Bürgergeld";
-    subText = "Monatliche Differenz unter den aktuellen Annahmen";
+    verdict = T("Differenz zugunsten Bürgergeld", "Difference favours Bürgergeld");
+    subText = T(
+      "Monatliche Differenz unter den aktuellen Annahmen",
+      "Monthly difference under the current assumptions",
+    );
     variantClass = "negative";
   }
 
@@ -74,12 +99,4 @@ export function renderOverviewDelta(
       </div>
     </div>
   `;
-}
-
-function fmtEur(v: number): string {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(v);
 }

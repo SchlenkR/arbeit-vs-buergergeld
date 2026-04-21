@@ -2,6 +2,7 @@
  * Zentraler Konstantenkatalog Rechtsstand 2026.
  * Alle Quellen als URL-Kommentar. Änderungen ausschließlich hier.
  */
+import { T } from "../i18n";
 
 // Bürgergeld-Regelbedarfe (§ 20 SGB II, Regelbedarfe-Fortschreibungsverordnung 2026 — Nullrunde)
 // https://www.bundesregierung.de/breg-de/aktuelles/nullrunde-buergergeld-2383676
@@ -142,7 +143,7 @@ export const WOHNLAGEN_2026: Record<
   }
 > = {
   A: {
-    label: "A — Top-Ballungsraum",
+    label: T("A; Top-Ballungsraum", "A; top metropolitan area"),
     beispiele: "Frankfurt, München, Hamburg-Mitte, Düsseldorf, Stuttgart",
     bruttokaltmieteEurMonat: [786, 903, 1078, 1219, 1360],
     aufschlagJeWeiterePersonEur: 141,
@@ -153,7 +154,7 @@ export const WOHNLAGEN_2026: Record<
     heizkostenEurProQmMonat: HEIZKOSTEN_EUR_PRO_QM_MONAT,
   },
   B: {
-    label: "B — Großstadt",
+    label: T("B; Großstadt", "B; large city"),
     beispiele: "Berlin, Köln, Hannover, Bonn, Wiesbaden, Mainz",
     bruttokaltmieteEurMonat: [650, 745, 890, 1005, 1120],
     aufschlagJeWeiterePersonEur: 115,
@@ -164,8 +165,14 @@ export const WOHNLAGEN_2026: Record<
     heizkostenEurProQmMonat: HEIZKOSTEN_EUR_PRO_QM_MONAT,
   },
   C: {
-    label: "C — Mittelstadt / prosperierendes Umland",
-    beispiele: "Leipzig, Dresden, Nürnberg, Kassel, Erfurt, Speckgürtel",
+    label: T(
+      "C; Mittelstadt / prosperierendes Umland",
+      "C; mid-size city / prosperous surroundings",
+    ),
+    beispiele: T(
+      "Leipzig, Dresden, Nürnberg, Kassel, Erfurt, Speckgürtel",
+      "Leipzig, Dresden, Nürnberg, Kassel, Erfurt, commuter belts",
+    ),
     bruttokaltmieteEurMonat: [490, 565, 675, 760, 850],
     aufschlagJeWeiterePersonEur: 90,
     nettokaltEurProQmMonat: 8.5,
@@ -175,7 +182,7 @@ export const WOHNLAGEN_2026: Record<
     heizkostenEurProQmMonat: HEIZKOSTEN_EUR_PRO_QM_MONAT,
   },
   D: {
-    label: "D — Ländlich / strukturschwach",
+    label: T("D; Ländlich / strukturschwach", "D; rural / structurally weak"),
     beispiele: "Ostvorpommern, Görlitz, Eifelkreis, Uckermark",
     bruttokaltmieteEurMonat: [380, 440, 525, 595, 665],
     aufschlagJeWeiterePersonEur: 70,
