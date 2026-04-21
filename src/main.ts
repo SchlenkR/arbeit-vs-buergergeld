@@ -22,8 +22,22 @@ const app = document.getElementById("app")!;
 app.innerHTML = `
   <header class="app-header">
     <h1>Einkommensrechner</h1>
-    <span class="tagline">Arbeit (angestellt) vs. Bürgergeld — Deutschland nach Wohnlage, Rechtsstand 2026.</span>
+    <span class="tagline">Arbeit (angestellt) vs. Bürgergeld, Deutschland nach Wohnlage, Rechtsstand 2026.</span>
   </header>
+  <section class="app-banner" aria-label="Wichtige Hinweise">
+    <p class="app-banner-line">
+      <strong>Bürgergeld ist eine Hilfe, kein Lebensmodell.</strong>
+      Es existiert für Menschen, die wirklich nicht anders können.
+      Wer arbeiten kann, ist gesetzlich zur Arbeit verpflichtet (§ 2 SGB II, Mitwirkungspflichten).
+      Bürgergeld zu beziehen heißt: andere arbeiten für dich. Nichts davon fällt vom Himmel.
+    </p>
+    <p class="app-banner-line">
+      <strong>Dieses Tool ist keine Beratung.</strong>
+      Es ist eine Modellrechnung, die Fehler enthalten kann.
+      Dieses Tool wurde nicht von einem Steuerberater, Sozialrechtler oder sonstigen Fachexperten erstellt.
+      Für konkrete Entscheidungen braucht es eine echte Beratung. Bitte diesen Hinweis ernst nehmen.
+    </p>
+  </section>
   <form id="eingabe" class="form">
     <div class="layout">
       <aside id="formContainer"></aside>
