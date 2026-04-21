@@ -28,7 +28,7 @@ document.title = T(
 const app = document.getElementById("app")!;
 app.innerHTML = `
   <header class="app-header">
-    <h1>${T("Einkommensrechner", "Income Calculator")}</h1>
+    <h1>${T("Sozialstaat vs. Arbeit", "Welfare state vs. work")}</h1>
     <span class="tagline">${T(
       "Arbeit (angestellt) vs. Bürgergeld, Deutschland nach Wohnlage, Rechtsstand 2026.",
       "Salaried work vs. Bürgergeld (German welfare), by residential tier, legal status 2026.",
@@ -39,6 +39,16 @@ app.innerHTML = `
     </span>
   </header>
   <section class="app-banner" aria-label="${T("Wichtige Hinweise", "Important notes")}">
+    <p class="app-banner-line app-banner-line-head">
+      <strong class="app-banner-title">${T(
+        "Bevor du loslegst.",
+        "Before you start.",
+      )}</strong>
+      <span class="app-banner-sub">${T(
+        "Drei Sätze, die zum Rechner dazugehören.",
+        "Three things that belong to this calculator.",
+      )}</span>
+    </p>
     <p class="app-banner-line">
       <strong>${T(
         "Bürgergeld ist eine Hilfe, kein Lebensmodell.",
@@ -47,6 +57,16 @@ app.innerHTML = `
       ${T(
         "Es existiert für Menschen, die wirklich nicht anders können. Wer arbeiten kann, ist gesetzlich zur Arbeit verpflichtet (§ 2 SGB II, Mitwirkungspflichten). Bürgergeld zu beziehen heißt: andere arbeiten für dich. Nichts davon fällt vom Himmel.",
         "It exists for people who genuinely cannot provide for themselves. Anyone able to work is legally required to do so (§ 2 SGB II, duty to cooperate). Receiving Bürgergeld means others are working for you. None of this falls from the sky.",
+      )}
+    </p>
+    <p class="app-banner-line">
+      <strong>${T(
+        "Schwarzarbeit schadet allen.",
+        "Undeclared work harms everyone.",
+      )}</strong>
+      ${T(
+        "Sie ist eine Straftat, hinterzieht Steuern und Sozialbeiträge (§ 266a StGB, § 370 AO, § 8 SchwarzArbG) und trifft zwei Gruppen gleichzeitig: die, die legal arbeiten und den vollen Beitrag tragen, und die, die wirklich bedürftig sind und auf ein funktionierendes Sozialsystem angewiesen sind.",
+        "It is a criminal offence, evading taxes and social contributions (§ 266a StGB, § 370 AO, § 8 SchwarzArbG), and it hits two groups at once: those who work legally and carry the full burden, and those who are genuinely in need and depend on a functioning welfare system.",
       )}
     </p>
     <p class="app-banner-line">

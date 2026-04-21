@@ -109,6 +109,22 @@ body {
   color: var(--fg);
 }
 
+.app-banner-line-head {
+  margin-bottom: 0.9rem;
+}
+
+.app-banner-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--fg);
+  margin-right: 0.45rem;
+}
+
+.app-banner-sub {
+  font-size: 0.9rem;
+  color: var(--muted, #666);
+}
+
 .app-banner-line:last-child {
   margin-bottom: 0;
 }
