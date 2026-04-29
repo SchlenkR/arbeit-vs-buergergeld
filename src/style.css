@@ -1544,6 +1544,12 @@ aside::before {
   text-decoration-color: var(--fg);
 }
 
+.legal-footer-build {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
 .source-groups {
   display: grid;
   gap: 0.9rem;

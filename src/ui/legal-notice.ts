@@ -461,6 +461,7 @@ export function renderLegalNotice(container: HTMLElement): void {
         target="_blank"
         rel="noopener noreferrer"
       >Quellcode auf GitHub</a>
+      <span class="legal-footer-build">Stand: ${formatBuildTime()}</span>
     </section>
   `,
     `
@@ -510,9 +511,21 @@ export function renderLegalNotice(container: HTMLElement): void {
         target="_blank"
         rel="noopener noreferrer"
       >Source code on GitHub</a>
+      <span class="legal-footer-build">Build: ${formatBuildTime()}</span>
     </section>
   `,
   );
+}
+
+function formatBuildTime(): string {
+  const formatter = new Intl.DateTimeFormat(locale, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return formatter.format(new Date(__BUILD_TIME__));
 }
 
 function renderWohnlageAppendix(): string {

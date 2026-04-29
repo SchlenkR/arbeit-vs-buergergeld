@@ -6,4 +6,7 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: true,
   },
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
 });
