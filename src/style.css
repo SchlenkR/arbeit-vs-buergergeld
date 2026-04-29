@@ -41,25 +41,22 @@ body {
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0.7rem 1rem;
-  padding: 0.6rem 2rem;
-  border-bottom: 1px solid var(--border);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--panel-accent) 5%, var(--card)),
-    var(--card)
-  );
+  padding: 1.25rem 2rem 0;
+  max-width: 1600px;
+  margin: 0 auto;
+  background: transparent;
 }
 
 .app-header h1 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
 .app-header .tagline {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   line-height: 1.3;
 }
 
